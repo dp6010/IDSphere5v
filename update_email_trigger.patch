@@ -1,0 +1,18 @@
+--- src/server/api.ts
++++ src/server/api.ts
+@@ -543,6 +543,8 @@
+       
+       let idEmailSent = alreadySent;
+-      if (status === 'ACTIVE' && previousStatus !== 'ACTIVE' && !alreadySent) {
++      const isNowActive = status === 'ACTIVE' || status === 'VERIFIED';
++      const wasActive = previousStatus === 'ACTIVE' || previousStatus === 'VERIFIED';
++      if (isNowActive && !wasActive && !alreadySent) {
+          // Send ID email
+          const idToken = generateToken({
+@@ -556,5 +558,5 @@
+          if (studentEmail) {
+             const idUrl = `${process.env.APP_URL || req.headers.origin || 'http://localhost:3000'}/id/${idToken}`;
+-            const emailBody = `Hello,\n\nYour IDSphere identity card has been approved and is now available.\n\nView My ID Card:\n${idUrl}\n\nThank you.`;
++            const emailBody = `Hello,\n\nYour IDSphere identity card has been approved and is now available.\n\nView My ID Card:\n${idUrl}\n\nThank you,\nIDSphere`;
+             try {
+               await emailService.sendEmail(studentEmail, 'Your IDSphere ID Card is Ready', emailBody);
