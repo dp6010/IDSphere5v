@@ -68,7 +68,7 @@ function IDCard({ org, reg, formName }: { org: Organization, reg: Registration, 
         <h3 className="text-2xl font-bold text-slate-900 leading-tight mb-6 text-center">{fullName}</h3>
         
         {qrUrl ? (
-          <div className="w-40 h-40 bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center">
+          <div className="w-40 h-40 bg-white p-2 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center mb-6">
             <QRCode 
               value={qrUrl} 
               size={150}
@@ -77,10 +77,14 @@ function IDCard({ org, reg, formName }: { org: Organization, reg: Registration, 
             />
           </div>
         ) : (
-          <div className="w-40 h-40 bg-slate-100 rounded-xl flex items-center justify-center animate-pulse">
+          <div className="w-40 h-40 bg-slate-100 rounded-xl flex items-center justify-center animate-pulse mb-6">
             <span className="text-slate-400 text-xs">Loading QR...</span>
           </div>
         )}
+      </div>
+      <div className="bg-slate-50 py-3 px-6 flex items-center justify-center border-t border-slate-200 gap-2 mt-auto">
+         <img src="/favicon.svg" alt="IDSphere" className="h-4 w-auto grayscale opacity-60" />
+         <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Powered by IDSphere</span>
       </div>
     </div>
   );

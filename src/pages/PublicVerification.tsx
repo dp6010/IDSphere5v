@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { Footer } from '../components/Footer';
 
 export function PublicVerification() {
   const { token } = useParams();
@@ -25,12 +26,15 @@ export function PublicVerification() {
   
   if (error || !verificationData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-red-100 max-w-md w-full text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Student Not Found</h2>
-          <p className="text-slate-600">This identity card could not be verified or is invalid.</p>
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white p-8 rounded-xl shadow-sm border border-red-100 max-w-md w-full text-center">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Student Not Found</h2>
+            <p className="text-slate-600">This identity card could not be verified or is invalid.</p>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
@@ -70,8 +74,9 @@ export function PublicVerification() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="flex-1 py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-start">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mt-8">
         
         <div className={`px-6 py-8 text-center ${headerColor}`}>
           <Icon className="w-16 h-16 text-white mx-auto mb-4" />
@@ -111,6 +116,8 @@ export function PublicVerification() {
         </div>
         
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

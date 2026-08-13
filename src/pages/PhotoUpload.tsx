@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Camera, CheckCircle, AlertCircle, Upload } from 'lucide-react';
+import { Footer } from '../components/Footer';
 
 export function PhotoUpload() {
   const { token } = useParams();
@@ -41,19 +42,23 @@ export function PhotoUpload() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-slate-50 py-12 px-4 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden text-center p-8">
-          <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">Upload Successful</h2>
-          <p className="text-slate-600 mb-6">Your photo has been securely uploaded and attached to your registration.</p>
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <div className="flex-1 py-12 px-4 flex items-center justify-center">
+          <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden text-center p-8">
+            <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Upload Successful</h2>
+            <p className="text-slate-600 mb-6">Your photo has been securely uploaded and attached to your registration.</p>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex justify-center">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-max">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div className="flex-1 py-12 px-4 sm:px-6 lg:px-8 flex justify-center items-start">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-max mt-8">
         <div className="bg-slate-900 px-6 py-8 text-center">
           <Camera className="w-12 h-12 text-white mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-white mb-2">Student Photo</h1>
@@ -105,6 +110,8 @@ export function PhotoUpload() {
           </button>
         </form>
       </div>
+      </div>
+      <Footer />
     </div>
   );
 }

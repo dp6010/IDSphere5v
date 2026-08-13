@@ -386,6 +386,10 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
 
   app.post('/api/public/register/:token', async (req: Request, res: Response) => {
     try {
+      if (req.body.consent !== true) {
+        return res.status(400).json({ error: 'You must agree to the Privacy Policy and Terms and Conditions before submitting your registration.' });
+      }
+
       const verification = verifyToken(req.params.token);
       if (verification.error) return res.status(404).json({ error: 'Form Not Found' });
       const payload = verification.payload;
@@ -393,6 +397,11 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       let data = req.body;
       if (req.body.data) {
         data = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body.data;
+      }
+
+      // Do not store consent flag in the registration data
+      if ('consent' in data) {
+        delete data.consent;
       }
 
       const registrationId = await googleService.addRegistration(payload.orgId, payload.formId, data);

@@ -20,6 +20,8 @@ import { PhotoUpload } from './pages/PhotoUpload';
 import { PublicRegistration } from './pages/PublicRegistration';
 import { PublicVerification } from './pages/PublicVerification';
 import { PublicIdCard } from './pages/PublicIdCard';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsAndConditions } from './pages/TermsAndConditions';
 
 export default function App() {
   return (
@@ -30,6 +32,9 @@ export default function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
           </Route>
+          
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsAndConditions />} />
           
                     {/* Public Photo Upload */}
           <Route path="/public/register/:token" element={<PublicRegistration />} />

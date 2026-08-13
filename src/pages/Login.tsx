@@ -23,9 +23,7 @@ export function Login() {
   return (
     <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center font-bold text-white mb-4 text-xl">
-          ID
-        </div>
+        <img src="/logo.svg" alt="IDSphere" className="h-10 w-auto mb-6" />
         <h1 className="text-2xl font-semibold text-slate-900">Welcome to IDSphere</h1>
         <p className="text-slate-500 mt-2 text-sm text-center">
           Sign in to manage digital ID cards or access your portal.

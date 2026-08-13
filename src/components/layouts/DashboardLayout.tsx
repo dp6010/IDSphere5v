@@ -3,6 +3,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { LogOut, User, LayoutDashboard, FileText, Users, Badge } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Footer } from '../Footer';
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -21,8 +22,7 @@ export function DashboardLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center font-bold">ID</div>
-              <span className="font-semibold text-lg tracking-tight">IDSphere</span>
+              <img src="/logo-light.svg" alt="IDSphere" className="h-7 w-auto" />
             </div>
             
             <nav className="hidden md:flex gap-1">
@@ -72,6 +72,7 @@ export function DashboardLayout() {
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
         <Outlet />
       </main>
+      <Footer />
     </div>
   );
 }
