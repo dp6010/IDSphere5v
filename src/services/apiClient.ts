@@ -33,12 +33,9 @@ export const apiClient = {
   getOrganization: (email: string) => authFetch('/api/organizations/me', email),
   getForms: (email: string, orgId: string) => authFetch(`/api/organizations/${orgId}/forms`, email),
   getPublicFormToken: (email: string, orgId: string, formId: string) => authFetch(`/api/organizations/${orgId}/forms/${formId}/public-token`, email),
-  createForm: (email: string, orgId: string, form: any, token: string) => 
+  createForm: (email: string, orgId: string, form: any) => 
     authFetch(`/api/organizations/${orgId}/forms`, email, { 
       method: 'POST', 
-      headers: {
-        'x-oauth-access-token': token
-      },
       body: JSON.stringify(form) 
     }),
   updateForm: (email: string, orgId: string, formId: string, form: any) =>
@@ -58,11 +55,7 @@ export const apiClient = {
     authFetch(`/api/organizations/${orgId}/registrations/${registrationId}/resend-photo-email`, email, { method: 'POST' }),
   getVerificationToken: (email: string, orgId: string, registrationId: string) => 
     authFetch(`/api/organizations/${orgId}/registrations/${registrationId}/verify-token`, email),
-  syncRegistrations: (email: string, orgId: string, token: string) => 
-    authFetch(`/api/organizations/${orgId}/registrations/sync`, email, {
-      method: 'POST',
-      headers: { 'x-oauth-access-token': token }
-    }),
+
   updateRegistrationStatus: (email: string, orgId: string, registrationId: string, status: string, validFrom?: string, validTill?: string) => 
     authFetch(`/api/organizations/${orgId}/registrations/${registrationId}/status`, email, {
       method: 'PATCH',
@@ -74,7 +67,7 @@ export const apiClient = {
       method: 'DELETE'
     }),
   deleteFormsBulk: (email: string, orgId: string, formIds: string[]) => 
-    authFetch(`/api/organizations/${orgId}/forms/bulk`, email, {
+    authFetch(`/api/organizations/${orgId}/forms/bulk?ids=${encodeURIComponent(formIds.join(','))}`, email, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ formIds })
@@ -84,7 +77,7 @@ export const apiClient = {
       method: 'DELETE'
     }),
   deleteRegistrationsBulk: (email: string, orgId: string, registrationIds: string[]) => 
-    authFetch(`/api/organizations/${orgId}/registrations/bulk`, email, {
+    authFetch(`/api/organizations/${orgId}/registrations/bulk?ids=${encodeURIComponent(registrationIds.join(','))}`, email, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ registrationIds })

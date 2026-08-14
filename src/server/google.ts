@@ -26,7 +26,6 @@ const getGoogleAuth = () => {
 
 const getSheets = () => google.sheets({ version: 'v4', auth: getGoogleAuth() });
 export const getDrive = () => google.drive({ version: 'v3', auth: getGoogleAuth() });
-const getFormsAPI = () => google.forms({ version: 'v1', auth: getGoogleAuth() });
 
 const RAW_MASTER_SHEET_ID = process.env.MASTER_SPREADSHEET_ID || '';
 
@@ -137,7 +136,6 @@ export const googleService = {
     if (!foundOrg) throw new Error('ORGANIZATION_NOT_FOUND');
 
     const sheets = getSheets();
-    const drive = getDrive();
 
     try {
       await sheets.spreadsheets.get({ spreadsheetId: foundOrg.googleSpreadsheetId });
@@ -147,30 +145,6 @@ export const googleService = {
       safeLog('TestOrgSheet', 'Spreadsheet', foundOrg.googleSpreadsheetId, status, false);
       if (status === 404) throw new Error('ORGANIZATION_SHEET_NOT_FOUND');
       if (status === 403 || status === 401) throw new Error('ORGANIZATION_SHEET_PERMISSION_DENIED');
-      throw error;
-    }
-
-    try {
-      // Extract valid folder ID if it's a URL
-      let cleanFolderId = foundOrg.googleDriveFolderId;
-      if (cleanFolderId.includes('folders/')) {
-        cleanFolderId = cleanFolderId.match(/folders\/([a-zA-Z0-9-_]+)/)?.[1] || cleanFolderId;
-      } else if (cleanFolderId.includes('id=')) {
-        cleanFolderId = cleanFolderId.match(/id=([a-zA-Z0-9-_]+)/)?.[1] || cleanFolderId;
-      } else {
-        // Fallback for messy URLs like 143l8g37ABUoZUx_aIHTea_F1RQGnp3ll?usp=drive_link
-        const match = cleanFolderId.match(/^([a-zA-Z0-9-_]+)(\?|$)/);
-        if (match) cleanFolderId = match[1];
-      }
-      foundOrg.googleDriveFolderId = cleanFolderId;
-
-      await drive.files.get({ fileId: cleanFolderId, fields: 'id' });
-      safeLog('TestOrgDrive', 'DriveFolder', cleanFolderId, 200, true);
-    } catch (error: any) {
-      const status = error.code || error.status || 'UNKNOWN';
-      safeLog('TestOrgDrive', 'DriveFolder', foundOrg.googleDriveFolderId, status, false);
-      if (status === 404) throw new Error('DRIVE_FOLDER_NOT_FOUND');
-      if (status === 403 || status === 401) throw new Error('DRIVE_FOLDER_PERMISSION_DENIED');
       throw error;
     }
 
@@ -360,25 +334,16 @@ async getForms(orgId: string) {
       }
     });
     
-    // Attempt to delete photo from Drive if it exists
+    // Attempt to delete photo from Supabase if it exists
     if (photoReference) {
       if (photoReference.startsWith(process.env.SUPABASE_STORAGE_BUCKET || 'student-photos')) {
         try {
-          const { supabaseService } = require('./supabase');
+          const { supabaseService } = await import('./supabase');
           await supabaseService.deleteFile(photoReference);
           console.log('[Delete Registration Diagnostic] Photo Cleanup: success (Supabase)');
         } catch (e: any) {
           console.error('[Delete Registration Diagnostic] Photo Cleanup: failure (Supabase):', e);
           throw new Error('Registration row deleted, but failed to delete photo from Supabase: ' + e.message);
-        }
-      } else {
-        try {
-          const drive = getDrive();
-          await drive.files.delete({ fileId: photoReference });
-          console.log('[Delete Registration Diagnostic] Photo Cleanup: success (Drive)');
-        } catch (e: any) {
-          console.error('[Delete Registration Diagnostic] Photo Cleanup: failure (Drive):', e);
-          throw new Error('Registration row deleted, but failed to delete photo from Drive: ' + e.message);
         }
       }
     }
@@ -422,62 +387,16 @@ async getForms(orgId: string) {
     return { success: true };
   },
 
-  async createForm(orgId: string, name: string, userAccessToken: string, origin: string = 'http://localhost:3000', customFields: string[] = []) {
+  async createForm(orgId: string, name: string, customFields: string[] = []) {
     const org = await this.getOrganizationById(orgId);
     if (!org) throw new Error('Org not found');
 
     const sheets = getSheets();
-    
-    // Instantiate user-authenticated OAuth2 client for Forms API
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: userAccessToken });
-    const userFormsAPI = google.forms({ version: 'v1', auth: oauth2Client });
-    
-    // 1. Create the Form in Google Forms
-    let formId, responderUri;
-    try {
-      const createRes = await userFormsAPI.forms.create({
-        requestBody: {
-          info: {
-            title: name,
-            documentTitle: name
-          }
-        }
-      });
-      formId = createRes.data.formId!;
-      responderUri = createRes.data.responderUri || '';
-      console.log(`[Forms Diagnostic]\nOperation: forms.create\nStatus: 200\nSuccess: true`);
-    } catch (e: any) {
-      throw new Error(`Google Forms API error: ${e.message}`);
-    }
+    const formId = crypto.randomUUID();
+    const responderUri = '';
+    const photoEntryId = '';
 
-    // 2. Add standard fields AND Photo Reference field
-    let photoEntryId = null;
-    try {
-      const batchRes = await userFormsAPI.forms.batchUpdate({
-        formId: formId,
-        requestBody: {
-          requests: [
-            ...customFields.map((f, i) => ({ createItem: { item: { title: f, questionItem: { question: { required: true, textQuestion: { paragraph: false } } } }, location: { index: i } } })),
-            { createItem: { item: { title: 'Photo Reference', description: 'Do not edit this field. It is populated automatically after your photo is uploaded.', questionItem: { question: { required: true, textQuestion: { paragraph: false } } } }, location: { index: customFields.length } } },
-            { updateFormInfo: { info: { description: `To upload your student photo, please use the secure photo-upload link provided by your organization after completing this registration.` }, updateMask: 'description' } }
-          ]
-        }
-      });
-      console.log(`[Forms Diagnostic]\nOperation: forms.batchUpdate\nStatus: 200\nSuccess: true`);
-      
-      // We must fetch the form again to get the questionId (entry.XXXX) of the Photo Reference item.
-      const getRes = await userFormsAPI.forms.get({ formId });
-      const items = getRes.data.items || [];
-      const photoItem = items.find(i => i.title === 'Photo Reference');
-      if (photoItem && photoItem.questionItem && photoItem.questionItem.question) {
-        photoEntryId = photoItem.questionItem.question.questionId;
-      }
-    } catch (e: any) {
-      throw new Error(`Google Forms API error during batchUpdate: ${e.message}`);
-    }
-
-    // 3. Save reference to Sheet (create tab if missing)
+    // Save reference to Sheet (create tab if missing)
     try {
       await sheets.spreadsheets.values.append({
         spreadsheetId: org.googleSpreadsheetId,
@@ -584,118 +503,6 @@ async ensureRegistrationsTab(spreadsheetId: string) {
       console.error('Failed to ensure Registrations tab:', e);
       throw e;
     }
-  },
-
-  async syncRegistrations(orgId: string, userAccessToken: string) {
-    const org = await this.getOrganizationById(orgId);
-    if (!org) throw new Error('Org not found');
-    const forms = await this.getForms(orgId);
-    
-    if (!userAccessToken) {
-      throw new Error('GOOGLE_FORMS_RESPONSE_PERMISSION_DENIED: Google authorization required to synchronize registrations.');
-    }
-
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: userAccessToken });
-    const formsAPI = google.forms({ version: 'v1', auth: oauth2Client });
-    
-    await this.ensureRegistrationsTab(org.googleSpreadsheetId);
-    
-    const sheets = getSheets();
-    const existingRes = await sheets.spreadsheets.values.get({
-      spreadsheetId: org.googleSpreadsheetId,
-      range: 'Registrations!A:H',
-    });
-    const existingRows = existingRes.data.values || [];
-    const existingMap = new Map();
-    for (let i = 1; i < existingRows.length; i++) {
-      existingMap.set(existingRows[i][0], { rowIndex: i + 1, data: existingRows[i] });
-    }
-
-    let added = 0;
-    let updated = 0;
-    let skipped = 0;
-    
-    for (const form of forms) {
-      if (!form.formId) continue;
-      try {
-        const formDetails = await formsAPI.forms.get({ formId: form.formId });
-        const questions = formDetails.data.items || [];
-        const questionMap = questions.reduce((acc: any, item: any) => {
-          if (item.questionItem && item.questionItem.question) {
-            acc[item.questionItem.question.questionId] = item.title;
-          }
-          return acc;
-        }, {});
-
-        const res = await formsAPI.forms.responses.list({ formId: form.formId });
-        console.log(`[Forms Response Diagnostic]\nOperation: forms.responses.list\nForm ID: ***${form.formId.slice(-4)}\nCredential Type: GOOGLE_OAUTH\nOAuth Token Present: ${!!userAccessToken}\nHTTP Status: ${res.status}\nSuccess: true`);
-        const responses = res.data.responses || [];
-        
-        for (const r of responses) {
-          const customData: Record<string, string> = {};
-
-          if (r.answers) {
-            for (const [questionId, answer] of Object.entries(r.answers)) {
-              const questionTitle = questionMap[questionId] || questionId;
-              if (answer.fileUploadAnswers && answer.fileUploadAnswers.answers) {
-                const fileId = answer.fileUploadAnswers.answers[0]?.fileId;
-                if (fileId) {
-                  customData[questionTitle] = fileId;
-                }
-              } else if (answer.textAnswers && answer.textAnswers.answers) {
-                const value = answer.textAnswers.answers[0]?.value || '';
-                customData[questionTitle] = value;
-              }
-            }
-          }
-          
-          const responseId = r.responseId;
-          const dataJson = JSON.stringify(customData);
-          const newRowData = [
-            responseId,
-            form.formId,
-            r.createTime,
-            'PENDING', // status
-            dataJson
-          ];
-          
-          if (existingMap.has(responseId)) {
-            const existing = existingMap.get(responseId);
-            const changed = existing.data[4] !== dataJson;
-            if (changed) {
-              newRowData[3] = existing.data[3] || 'PENDING'; // preserve existing status
-              await sheets.spreadsheets.values.update({
-                spreadsheetId: org.googleSpreadsheetId,
-                range: `Registrations!A${existing.rowIndex}:E${existing.rowIndex}`,
-                valueInputOption: 'RAW',
-                requestBody: { values: [newRowData] }
-              });
-              updated++;
-            } else {
-              skipped++;
-            }
-          } else {
-            await sheets.spreadsheets.values.append({
-              spreadsheetId: org.googleSpreadsheetId,
-              range: 'Registrations!A:H',
-              valueInputOption: 'RAW',
-              requestBody: { values: [newRowData] }
-            });
-            added++;
-            existingMap.set(responseId, { data: newRowData }); 
-          }
-        }
-      } catch (e: any) {
-        console.error(`[Forms Response Diagnostic]\nOperation: forms.responses.list\nForm ID: ***${form.formId.slice(-4)}\nCredential Type: GOOGLE_OAUTH\nOAuth Token Present: ${!!userAccessToken}\nHTTP Status: ${e.status || e.code || 500}\nSuccess: false`);
-        console.error(`[Forms Response Error]\nHTTP Status: ${e.status || e.code || 500}\nReason: ${e.errors?.[0]?.reason || e.reason || 'UNKNOWN'}\nMessage: ${e.message || 'Unknown error'}`);
-        if (e.status === 401 || e.status === 403 || e.message?.includes('permission')) {
-          throw new Error('GOOGLE_FORMS_RESPONSE_PERMISSION_DENIED: Google authorization does not have permission to read this form\'s responses. Please reconnect your Google account.');
-        }
-      }
-    }
-    
-    return { added, updated, skipped };
   },
 
   async getRegistrations(orgId: string) {

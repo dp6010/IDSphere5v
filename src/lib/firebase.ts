@@ -17,7 +17,3 @@ export const auth = initializeAuth(app, {
   popupRedirectResolver: browserPopupRedirectResolver
 });
 export const googleProvider = new GoogleAuthProvider();
-
-// Scopes required for Phase 1+ interactions with Google Drive & Sheets
-googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
-googleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');

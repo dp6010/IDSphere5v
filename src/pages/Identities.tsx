@@ -82,7 +82,7 @@ function IDCard({ org, reg, formName }: { org: Organization, reg: Registration, 
           </div>
         )}
       </div>
-      <div className="bg-slate-50 py-3 px-6 flex items-center justify-center border-t border-slate-200 gap-2 mt-auto">
+      <div className="bg-slate-50 py-1.5 px-6 flex items-center justify-center border-t border-slate-200 gap-2 mt-auto">
          <img src="/favicon.svg" alt="IDSphere" className="h-4 w-auto grayscale opacity-60" />
          <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">Powered by IDSphere</span>
       </div>

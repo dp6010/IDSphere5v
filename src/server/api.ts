@@ -457,20 +457,12 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       const { name, fields } = req.body;
       if (!name) return res.status(400).json({ error: 'Form name is required' });
 
-      const googleToken = req.headers['x-oauth-access-token'] as string;
-      console.log(`[OAuth Diagnostic] Google access token present: ${!!googleToken}, Token length: ${googleToken ? googleToken.length : 0}`);
-
-      if (!googleToken) {
-        return res.status(401).json({ error: 'Google authorization is required to create a form. Please connect your Google account.' });
-      }
-
       // Check if user is actually admin of THIS org (organization isolation)
       if (org.admin !== (req as any).userEmail) {
         return res.status(403).json({ error: 'You are not authorized to create forms for this organization.' });
       }
 
-      const origin = process.env.APP_URL || req.headers.origin || 'http://localhost:3000';
-      const result = await googleService.createForm(req.params.orgId, name, googleToken, origin, fields);
+      const result = await googleService.createForm(req.params.orgId, name, fields);
       res.json({ success: true, formId: result.formId, responderUri: result.responderUri });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -486,16 +478,28 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       if (!org || org.organizationId !== req.params.orgId) {
         return res.status(403).json({ error: 'Forbidden' });
       }
-      const { formIds } = req.body;
-      if (!Array.isArray(formIds)) return res.status(400).json({ error: 'formIds must be an array' });
+      let formIds = req.body?.formIds;
+      if (!formIds && req.query.ids) {
+        formIds = (req.query.ids as string).split(',');
+      }
+      if (!Array.isArray(formIds) || formIds.length === 0) return res.status(400).json({ error: 'formIds must be an array' });
 
+      const results = [];
       for (const formId of formIds) {
         try {
           await googleService.deleteForm(req.params.orgId, formId);
-        } catch (e) {
+          results.push({ id: formId, success: true });
+        } catch (e: any) {
           console.error(`Failed to delete form ${formId}: `, e);
+          results.push({ id: formId, success: false, error: e.message });
         }
       }
+      
+      const hasErrors = results.some(r => !r.success);
+      if (hasErrors) {
+         return res.status(207).json({ success: true, warning: 'Some forms failed to delete', results });
+      }
+
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -552,19 +556,7 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
     }
   });
 
-  app.post('/api/organizations/:orgId/registrations/sync', authMiddleware, async (req: Request, res: Response) => {
-    try {
-      const googleToken = req.headers['x-oauth-access-token'] as string;
-      const result = await googleService.syncRegistrations(req.params.orgId, googleToken);
-      res.json(result);
-    } catch (error: any) {
-      if (error.message && (error.message.includes('GOOGLE_FORMS_PERMISSION_DENIED') || error.message.includes('GOOGLE_FORMS_RESPONSE_PERMISSION_DENIED'))) {
-        res.status(403).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: error.message });
-      }
-    }
-  });
+
 
 
   app.get('/api/organizations/:orgId/registrations/:registrationId/photo/:fileId(*)', authMiddleware, async (req: Request, res: Response) => {
@@ -598,17 +590,29 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       if (!org || org.organizationId !== req.params.orgId) {
         return res.status(403).json({ error: 'Forbidden' });
       }
-      const { registrationIds } = req.body;
-      if (!Array.isArray(registrationIds)) return res.status(400).json({ error: 'registrationIds must be an array' });
+      let registrationIds = req.body?.registrationIds;
+      if (!registrationIds && req.query.ids) {
+        registrationIds = (req.query.ids as string).split(',');
+      }
+      if (!Array.isArray(registrationIds) || registrationIds.length === 0) return res.status(400).json({ error: 'registrationIds must be an array' });
 
+      const results = [];
       for (const regId of registrationIds) {
         try {
-          await googleService.deleteRegistration(req.params.orgId, regId);
-        } catch (e) {
+          const result = await googleService.deleteRegistration(req.params.orgId, regId);
+          results.push({ id: regId, success: true, warning: result?.warning });
+        } catch (e: any) {
           console.error(`Failed to delete registration ${regId}: `, e);
+          results.push({ id: regId, success: false, error: e.message });
         }
       }
-      res.json({ success: true });
+      
+      const hasErrors = results.some(r => !r.success);
+      if (hasErrors) {
+         return res.status(207).json({ success: true, warning: 'Some registrations failed to delete', results });
+      }
+
+      res.json({ success: true, results });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -625,9 +629,9 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       console.log('[Delete Registration Diagnostic] Operation: DeleteRegistration');
       console.log('[Delete Registration Diagnostic] Organization: ' + req.params.orgId);
       console.log('[Delete Registration Diagnostic] Registration ID: ' + req.params.registrationId);
-      await googleService.deleteRegistration(req.params.orgId, req.params.registrationId);
+      const result = await googleService.deleteRegistration(req.params.orgId, req.params.registrationId);
       console.log('[Delete Registration Diagnostic] Result: success');
-      res.json({ success: true });
+      res.json({ success: true, warning: result?.warning });
     } catch (e: any) {
       if (e.message.includes('Registration not found')) {
         return res.status(404).json({ error: 'Registration not found.' });

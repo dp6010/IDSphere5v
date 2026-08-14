@@ -65,13 +65,12 @@ function SecurePhoto({ orgId, regId, fileId, label }: { orgId: string, regId: st
 }
 
 export function Registrations() {
-  const { user, requireGoogleFormsAccess, googleAccessToken } = useAuth();
+  const { user } = useAuth();
   
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [forms, setForms] = useState<Record<string, Form>>({});
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
@@ -192,47 +191,6 @@ export function Registrations() {
     }
   };
 
-  const handleSync = async (o: Organization, forceToken?: string) => {
-    if (syncing) return;
-    const token = forceToken || googleAccessToken;
-    if (!token) {
-      setAuthError('Google authorization required to synchronize registrations.');
-      return;
-    }
-    
-    try {
-      setSyncing(true);
-      setAuthError(null);
-      const syncResult = await apiClient.syncRegistrations(user!.email!, o.organizationId, token);
-      console.log('Sync Result:', syncResult);
-      await fetchRegistrations(o);
-    } catch (err: any) {
-      if (err.message && (err.message.includes('GOOGLE_FORMS_PERMISSION_DENIED') || err.message.includes('GOOGLE_FORMS_RESPONSE_PERMISSION_DENIED') || err.message.includes('authorization is required'))) {
-        setAuthError('Google authorization required to synchronize registrations.');
-      } else {
-        console.error('Failed to sync registrations:', err);
-      }
-    } finally {
-      setSyncing(false);
-    }
-  };
-  
-  const handleConnectGoogle = async () => {
-    if (connectingGoogle) return;
-    try {
-      setConnectingGoogle(true);
-      setAuthError(null);
-      const token = await requireGoogleFormsAccess();
-      if (org) {
-        handleSync(org, token);
-      }
-    } catch (err: any) {
-      setAuthError(err.message || 'Google authorization failed.');
-    } finally {
-      setConnectingGoogle(false);
-    }
-  };
-
   useEffect(() => {
     if (user?.email) {
       apiClient.getOrganization(user.email).then(o => {
@@ -265,37 +223,7 @@ export function Registrations() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Registrations</h1>
-        <button 
-          onClick={() => org && handleSync(org)}
-          disabled={syncing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Synchronizing...' : 'Sync Registrations'}
-        </button>
       </div>
-
-      {authError && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <Lock className="h-5 w-5 text-red-400" />
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">
-                {authError}
-              </p>
-              <button 
-                onClick={handleConnectGoogle}
-                disabled={connectingGoogle}
-                className="mt-2 text-sm font-medium text-red-700 underline hover:text-red-600 disabled:opacity-50"
-              >
-                {connectingGoogle ? 'Connecting Google Account...' : 'Connect Google Account'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[200px]">
@@ -373,12 +301,12 @@ export function Registrations() {
         </div>
       )}
 
-      {registrations.length === 0 && !authError && !loading && !syncing ? (
+      {registrations.length === 0 && !loading ? (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
           <AlertCircle className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-2 text-sm font-medium text-gray-900">No registrations yet</h3>
           <p className="mt-1 text-sm text-gray-500">
-            Registrations will appear here after synchronization.
+            Registrations will appear here when submitted.
           </p>
         </div>
       ) : (

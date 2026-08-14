@@ -8,22 +8,13 @@ interface AuthContextType {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
-  requireGoogleFormsAccess: () => Promise<string>;
-  googleAccessToken: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-let activeAuthPromise: Promise<string> | null = null;
-let currentToken: string | null = null; // Global tracker for closure safety
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
-  
-  // Single-flight promise for Google Auth to prevent popup-blocked / cancelled errors
-
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
@@ -41,9 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(appUser);
       } else {
         setUser(null);
-        setGoogleAccessToken(null);
-        currentToken = null;
-    currentToken = null;
       }
       setLoading(false);
     });
@@ -51,33 +39,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-    const signInWithGoogle = async () => {
-    await requireGoogleFormsAccess();
-  };
-
-    const requireGoogleFormsAccess = async () => {
-    if (googleAccessToken) return googleAccessToken;
-    if (currentToken) return currentToken;
-    
-    if (activeAuthPromise) {
-      return await activeAuthPromise;
-    }
-    
-    const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/forms.body');
-    provider.addScope('https://www.googleapis.com/auth/drive');
-    provider.addScope('https://www.googleapis.com/auth/forms.responses.readonly');
-    provider.setCustomParameters({ prompt: 'consent' });
-
-    const promise = signInWithPopup(auth, provider).then(result => {
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        setGoogleAccessToken(credential.accessToken);
-        currentToken = credential.accessToken;
-        return credential.accessToken;
-      }
-      throw new Error('Failed to obtain Google authorization.');
-    }).catch(e => {
+  const signInWithGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e: any) {
       if (e.code === 'auth/popup-blocked') {
         throw new Error('Google sign-in popup was blocked. Please allow popups for this site and try again.');
       }
@@ -85,21 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('Google authorization was cancelled.');
       }
       throw e;
-    }).finally(() => {
-      activeAuthPromise = null;
-    });
-    
-    activeAuthPromise = promise;
-    return await promise;
+    }
   };
 
   const logout = async () => {
     await signOut(auth);
-    setGoogleAccessToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout, requireGoogleFormsAccess, googleAccessToken }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   );
