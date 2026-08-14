@@ -159,7 +159,7 @@ export function Identities() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center print:hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Identity Cards</h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -169,7 +169,7 @@ export function Identities() {
         <button
           onClick={handlePrint}
           disabled={registrations.length === 0}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50 w-full sm:w-auto justify-center"
         >
           <Printer size={16} />
           Print IDs

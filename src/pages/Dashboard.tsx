@@ -34,8 +34,8 @@ export function Dashboard() {
 
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
-      <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-8">
+      <h1 className="text-xl sm:text-2xl font-semibold text-slate-900 mb-2">
         Welcome back, {user?.displayName || user?.email}
       </h1>
       
