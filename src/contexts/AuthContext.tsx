@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, signInWithCredential, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
+
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+  }
+}
 
 interface AuthContextType {
   user: User | null;
@@ -36,11 +44,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    const handleNativeAuth = async (event: Event) => {
+      if (!window.ReactNativeWebView) return;
+      
+      // Security: Only process native bridge events if running on the intended origin or localhost for testing
+      const isTrustedOrigin = window.location.origin === 'https://idsphere-three.vercel.app' || 
+                              window.location.hostname === 'localhost' || 
+                              window.location.hostname.includes('run.app');
+                              
+      if (!isTrustedOrigin) return;
+
+      const customEvent = event as CustomEvent;
+      const detail = customEvent.detail;
+      
+      if (!detail || typeof detail.idToken !== 'string' || detail.idToken.trim() === '') {
+        return;
+      }
+
+      try {
+        const credential = GoogleAuthProvider.credential(detail.idToken);
+        await signInWithCredential(auth, credential);
+      } catch (error) {
+        // Do not expose token in error messages
+        console.error('Native authentication failed.');
+      }
+    };
+
+    window.addEventListener('NATIVE_GOOGLE_AUTH', handleNativeAuth);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('NATIVE_GOOGLE_AUTH', handleNativeAuth);
+    };
   }, []);
 
   const signInWithGoogle = async () => {
     try {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'LOGIN_GOOGLE' }));
+        return;
+      }
       await signInWithPopup(auth, googleProvider);
     } catch (e: any) {
       if (e.code === 'auth/popup-blocked') {

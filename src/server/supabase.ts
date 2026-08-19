@@ -63,5 +63,24 @@ export const supabaseService = {
        return null;
     }
     return data.signedUrl;
+  },
+
+  async deleteFile(storagePath: string): Promise<void> {
+    if (!supabase) return;
+
+    const parts = storagePath.split('/');
+    if (parts.length < 2) return;
+    
+    const bucket = parts.shift();
+    const filePath = parts.join('/');
+
+    const { error } = await supabase.storage
+      .from(bucket!)
+      .remove([filePath]);
+
+    if (error) {
+      console.error("Supabase delete file error", error);
+      throw new Error(`PHOTO_DELETE_FAILED: ${error.message || JSON.stringify(error)}`);
+    }
   }
 };

@@ -599,8 +599,8 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       const results = [];
       for (const regId of registrationIds) {
         try {
-          const result = await googleService.deleteRegistration(req.params.orgId, regId);
-          results.push({ id: regId, success: true, warning: result?.warning });
+          await googleService.deleteRegistration(req.params.orgId, regId);
+          results.push({ id: regId, success: true });
         } catch (e: any) {
           console.error(`Failed to delete registration ${regId}: `, e);
           results.push({ id: regId, success: false, error: e.message });
@@ -629,9 +629,9 @@ export function setupApiRoutes(app: Application, upload: multer.Multer) {
       console.log('[Delete Registration Diagnostic] Operation: DeleteRegistration');
       console.log('[Delete Registration Diagnostic] Organization: ' + req.params.orgId);
       console.log('[Delete Registration Diagnostic] Registration ID: ' + req.params.registrationId);
-      const result = await googleService.deleteRegistration(req.params.orgId, req.params.registrationId);
+      await googleService.deleteRegistration(req.params.orgId, req.params.registrationId);
       console.log('[Delete Registration Diagnostic] Result: success');
-      res.json({ success: true, warning: result?.warning });
+      res.json({ success: true });
     } catch (e: any) {
       if (e.message.includes('Registration not found')) {
         return res.status(404).json({ error: 'Registration not found.' });
