@@ -4,7 +4,7 @@ import config from '../../firebase-applet-config.json';
 
 const firebaseConfig = {
   apiKey: config.apiKey,
-  authDomain: config.authDomain,
+  authDomain: "idsphere-three.vercel.app", // Overridden for Android WebView proxy
   projectId: config.projectId,
   storageBucket: config.storageBucket,
   messagingSenderId: config.messagingSenderId,

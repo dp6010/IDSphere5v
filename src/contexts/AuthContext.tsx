@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithPopup, signOut, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signInWithRedirect, getRedirectResult, signOut, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from '../lib/firebase';
 import { User, Role } from '../types';
 
@@ -17,6 +17,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Process redirect result to catch any errors from the Android WebView redirect flow
+    getRedirectResult(auth).catch((error) => {
+      console.error('Firebase Redirect Error:', error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         // In a complete implementation, this would fetch the user's role from Google Sheets/backend
@@ -41,13 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await signInWithRedirect(auth, googleProvider);
     } catch (e: any) {
       if (e.code === 'auth/popup-blocked') {
-        throw new Error('Google sign-in popup was blocked. Please allow popups for this site and try again.');
-      }
-      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
-        throw new Error('Google authorization was cancelled.');
+        throw new Error('Google sign-in was blocked. Please allow redirects and try again.');
       }
       throw e;
     }
